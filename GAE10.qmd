@@ -1,6 +1,6 @@
 ---
 title: "GAE10: PCA & NMDS"
-author: "Your Name Here"
+author: "Wyatt Stephenson"
 format: 
   html:
     theme: custom.scss
@@ -16,16 +16,22 @@ bibliography: references.bib
 #| label: setup
 #| echo: false
 #| message: false # to suppress "info messages"
+#| warning: false
 
 knitr::opts_chunk$set(
   echo = FALSE
   )
 
+library(broom)
 library(latex2exp)
 library(patchwork)
 library(kableExtra)
 library(tidyverse)
-
+library(vegan)
+library(FactoMineR)
+library(factoextra)
+library(ggfortify)
+library(ggrepel)
 options(scipen = 10)
 
 options(knitr.kable.NA = "")
@@ -52,8 +58,12 @@ knitr::include_graphics("Kingfishers.png")
 
 #### Statistical Methods:
 
+A principal component analysis were run using the FactoMineR package [@FactoMineR] using the size, light environment, parental care, territoriality, and hunting strategy variables as supplementary variables. The PCA was then plotted twice the first being a plot of just the variables and the second being a plot of individuals based on hunting strategy using the factoextra package [@factoextra].
+
 ```{r}
 #| label: Scenario1DataImport
+
+King <- read_csv("colors.csv", show_col_types = FALSE)
 
 # I have provided the PCA1 scores for the patches (columns 2-12) as an index of
 # the complex color data for each species (rows) as well as the body size (a
@@ -64,7 +74,45 @@ knitr::include_graphics("Kingfishers.png")
 
 ```
 
-### References:
+```{r}
+#| label: fig-Kingvar
+#| fig-cap: "Principal component analysis of anatomical sections"
+#| warning: FALSE
+KingPCA <- PCA(King,
+               quanti.sup = 13,
+               quali.sup = c(1,14:17),
+               graph = FALSE
+               )
+
+fviz_pca_var(
+  KingPCA,
+  repel = TRUE,
+  label = "var"
+)
+```
+
+```{r}
+#| label: fig-Kingind
+#| fig-cap: "Principle component analysis of species based on hunting strategy"
+#| warning: false
+
+ fviz_pca_ind(
+  KingPCA,
+  repel = TRUE,
+  label = "none",
+  habillage = c(
+    "Hunting_strategy"
+  )
+
+)
+
+```
+
+### Results
+
+When looking at the results of our PCA's we see some clustering in our variables but none within our individuals. Looking first at the PCA of the variables we can see that the anatomical areas found on the dorsal side of the species are positively correlated to dimension 1 which means that these areas tended to be more red and green while the ventral areas of the body are correlated to dimension 2 which means that they tend to be more blue and ultraviolet @fig-Kingvar. The reason we might see these trends is that the dorsal areas being more red and green allows for better camouflage when resting in trees along with the ventral side being more blue providing camouflage when in the air. Next looking at the PCA of individuals one was run for all four environmental and behavioral variables but the only on that had any level of clustering was the one based on the hunting strategy of the species. Even with the hunting strategy PCA having some level of clustering there is vary little that can be gained from this clustering due to how spread out and overlapping the groups @fig-Kingind.
+
+### 
 
 ------------------------------------------------------------------------
 
@@ -78,8 +126,13 @@ In Summer 2011, the researchers visited 17 deer exclosures in upland forests of 
 
 #### Statistical Methods:
 
+First non-dimensional scaling was applied to the data set with fore dimensions using the vegan package[@vegan]. Then a PermANOVA was run comparing plant communities based on treatment type using the vegan package [@vegan-3] and a table of the results was created using the kableExtra package [@kableExtra].
+
 ```{r}
 #| label: Scenario2DataImport
+
+
+Deer <- read_csv("Sabo_etal_data.csv", show_col_types = FALSE) 
 
 # I have provided data representing the proportion of quadrats each species
 # (columns) was found in as a an index of abundance within each deer exclosure
@@ -89,5 +142,46 @@ In Summer 2011, the researchers visited 17 deer exclosures in upland forests of 
 # deer exclosures, then test for differences in the plant communities between
 # the deer exclosures and the adjacent forests.
 ```
+
+```{r}
+#| label: DeernMDS
+#| results: "hide"
+#| echo: true
+
+Deermds <- metaMDS(
+  Deer[,-c(1:2)],
+  k=4
+)
+Deermds$stress
+```
+
+```{r}
+#| label: tbl-DeerPermanvova
+#| tbl-cap: "PermAnova to test the affect of deer presence on plant communittes"
+
+DeerPERMANOVA <- adonis2(
+  Deer[,-c(1,2)] ~ Treatment, 
+  data = Deer, 
+  by = "margin", 
+  permutations = 10001
+)
+
+kbl(
+  DeerPERMANOVA,
+  format = "markdown",
+  digits = c(0,3,3,3,3),
+  col.names = c(
+    "df",
+    "SS",
+    "$R^2$",
+    "F",
+    "p"
+  )
+)
+```
+
+### Results
+
+The two test showed no difference in the plant communities based on treatment type as the nMDS showed no separation between the two treatment types and when looking at the results of the PermANOVA there was only p-value of 0.998 @tbl-DeerPermanvova showing that the two groups had nearly the same results. With this data we can say the deer populations within this area do not impact the diversity and composition of the plant communities in the areas they are found.
 
 ### References:
